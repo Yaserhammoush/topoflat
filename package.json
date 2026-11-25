@@ -1,1 +1,10 @@
-{ "type": "commonjs" }
+{
+  "name": "topoflat",
+  "private": true,
+  "scripts": {
+    "start": "node flight-proxy/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
