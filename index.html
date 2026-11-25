@@ -17491,7 +17491,7 @@ function ensureObsDome() {
             const marker = 'trackpollBootstrap = ';
             const i = html.indexOf(marker);
             if (i < 0) return map;
-            const j = html.indexOf('</script>', i);
+            const j = html.indexOf('<' + '/script>', i);
             if (j < 0) return map;
             let data;
             try {
