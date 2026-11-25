@@ -9,8 +9,6 @@ let falakCons = false;
 let falakConsMode = 0;
 let falakPlanetOn = { mer: true, ven: true, mar: true, jup: true, sat: true, ura: true, nep: true };
 let falakSelectedPlanet = null;
-let falakFocusKind = null;
-let falakCenterLock = false;
 let falakSelectedStar = null;
 let falakHitStars = [];
 let falakHitPlanets = [];
@@ -220,12 +218,6 @@ function toggleFalakLayer(which) {
     falakSyncTabs();
     falakRenderSide();
     if (typeof ensureSunLoop === 'function') ensureSunLoop();
-    if (falakInObserverCam()) {
-        if (typeof sunPaused !== 'undefined' && sunPaused && typeof drawAzimuthal === 'function') {
-            requestAnimationFrame(function () { drawAzimuthal(); });
-        }
-        return;
-    }
     if (typeof drawAzimuthal === 'function') drawAzimuthal();
     if (typeof updateAzim3D === 'function') updateAzim3D();
 }
@@ -236,134 +228,22 @@ function falakSyncTabs() {
         if (b) b.classList.toggle('active', !!map[k]);
     });
 }
-function falakPaintPlanetToggle(id) {
-    const box = document.getElementById('planet-drop');
-    if (!box) return false;
-    const card = box.querySelector('[data-pid="' + id + '"]');
-    if (!card) return false;
-    const on = falakPlanetOn[id] !== false;
-    card.classList.toggle('off', !on);
-    const tog = card.querySelector('.planet-tog');
-    if (tog) {
-        tog.title = on ? 'إخفاء' : 'إظهار';
-        tog.setAttribute('onclick', "falakSetPlanet('" + id + "'," + (!on) + ")");
-        const img = tog.querySelector('img');
-        if (img) img.src = 'astro/planets/' + (on ? 'toggle-on.png' : 'toggle-off.png');
-    }
-    return true;
-}
 function falakSetPlanet(id, on) {
     falakPlanetOn[id] = on;
     if (on) falakPlanets = true;
     falakLayersOn();
     falakSyncTabs();
-    if (falakInObserverCam()) {
-        if (!falakPaintPlanetToggle(id)) falakRenderPlanets();
-        if (typeof ensureSunLoop === 'function') ensureSunLoop();
-        if (typeof sunPaused !== 'undefined' && sunPaused && typeof drawAzimuthal === 'function') {
-            requestAnimationFrame(function () { drawAzimuthal(); });
-        }
-        return;
-    }
     falakRenderPlanets();
     falakRenderSide();
     if (typeof drawAzimuthal === 'function') drawAzimuthal();
     if (typeof updateAzim3D === 'function') updateAzim3D();
 }
-function falakInObserverCam() {
-    return !!(typeof observer3DReadyCam !== 'undefined' && observer3DReadyCam
-        && typeof observerDomeOn !== 'undefined' && observerDomeOn
-        && typeof observer3DPos !== 'undefined' && observer3DPos);
-}
-function falakCameraHitPlanet(id) {
-    if (!falakInObserverCam() || typeof observerAltAz !== 'function' || typeof falakPlanetNow !== 'function' || typeof FALAK_PLANETS === 'undefined') return null;
-    const def = FALAK_PLANETS.filter(function (x) { return x.id === id; })[0];
-    if (!def) return null;
-    const now = falakPlanetNow(def);
-    const aa = observerAltAz(observer3DPos.lat, observer3DPos.lon, now.lat, now.lon);
-    if (!aa) return null;
-    return { kind: 'p', id: id, lat: now.lat, lon: now.lon, alt: aa.alt, az: aa.az };
-}
-function falakCameraHitStar(s) {
-    if (!s || !falakInObserverCam() || typeof observerAltAz !== 'function' || typeof falakSub !== 'function') return null;
-    const sub = falakSub(s[1], s[2]);
-    const aa = observerAltAz(observer3DPos.lat, observer3DPos.lon, sub.lat, sub.lon);
-    if (!aa) return null;
-    return { kind: 's', s: s, lat: sub.lat, lon: sub.lon, alt: aa.alt, az: aa.az };
-}
-function falakSkySelectable(lat, lon) {
-    if (!falakInObserverCam() || typeof observerAltAz !== 'function') return true;
-    const aa = observerAltAz(observer3DPos.lat, observer3DPos.lon, lat, lon);
-    return !!(aa && aa.alt >= -0.012);
-}
-function falakMarkPlanet(id) {
-    falakSelectedPlanet = id;
-    falakSelectedStar = null;
-    falakFocusKind = 'planet';
+function falakSelectPlanet(id) {
+    falakSelectedPlanet = falakSelectedPlanet === id ? null : id;
     falakRenderPlanets();
-    falakRenderSearchHits();
-    falakRenderSide();
-}
-function falakMarkStar(s) {
-    if (!s) return;
-    falakSelectedStar = s;
-    falakSelectedPlanet = null;
-    falakFocusKind = 'star';
-    falakRenderPlanets();
-    falakRenderSearchHits();
-    falakRenderSide();
-}
-let falakSkyKeyPrev = '';
-function falakRefreshSkyButtons() {
-    if (typeof FALAK_PLANETS === 'undefined') return;
-    let key = falakInObserverCam() ? 'c' : 'm';
-    if (falakInObserverCam()) {
-        FALAK_PLANETS.forEach(function (p) {
-            const now = falakPlanetNow(p);
-            key += falakSkySelectable(now.lat, now.lon) ? '1' : '0';
-        });
-        falakSearchHits.forEach(function (s) {
-            const sub = falakSub(s[1], s[2]);
-            key += falakSkySelectable(sub.lat, sub.lon) ? '1' : '0';
-        });
-    }
-    if (key === falakSkyKeyPrev) return;
-    falakSkyKeyPrev = key;
-    falakRenderPlanets();
-    falakRenderSearchHits();
-}
-function falakSelectPlanet(id, fromScreen) {
-    const inCam = falakInObserverCam();
-    if (inCam) {
-        const hit = falakCameraHitPlanet(id);
-        if (!hit || !falakSkySelectable(hit.lat, hit.lon)) return;
-        if (!fromScreen) {
-            falakMarkPlanet(id);
-            if (typeof obsZoomOverHalf === 'function' && obsZoomOverHalf() && typeof obsReturnThenZoom === 'function') obsReturnThenZoom(hit);
-            else if (typeof zoomObserverToBody === 'function') zoomObserverToBody(hit, 3000);
-            return;
-        }
-    }
-    if (!inCam && falakSelectedPlanet === id && falakFocusKind === 'planet') {
-        falakSelectedPlanet = null;
-        falakFocusKind = null;
-        falakCenterLock = false;
-    } else {
-        falakSelectedPlanet = id;
-        falakSelectedStar = null;
-        falakFocusKind = 'planet';
-        falakCenterLock = !inCam;
-        falakPlanetOn[id] = true;
-        falakPlanets = true;
-        falakLayersOn();
-        falakSyncTabs();
-        if (!inCam) falakHold2DCenter(true);
-    }
-    falakRenderPlanets();
-    falakRenderSearchHits();
     falakRenderSide();
     if (typeof drawAzimuthal === 'function') drawAzimuthal();
-    if (!inCam && typeof updateAzim3D === 'function') updateAzim3D();
+    if (typeof updateAzim3D === 'function') updateAzim3D();
 }
 function falakRenderPlanets() {
     const box = document.getElementById('planet-drop');
@@ -372,12 +252,10 @@ function falakRenderPlanets() {
     FALAK_PLANETS.forEach(function (p) {
         const on = falakPlanetOn[p.id] !== false;
         const sel = falakSelectedPlanet === p.id;
-        const now = falakPlanetNow(p);
-        const up = falakSkySelectable(now.lat, now.lon);
         const name = falakPlainName(p.ar);
-        html += '<div class="planet-card' + (sel ? ' sel' : '') + (on ? '' : ' off') + (up ? '' : ' sky-off') + '" data-pid="' + p.id + '">';
+        html += '<div class="planet-card' + (sel ? ' sel' : '') + (on ? '' : ' off') + '">';
         html += '<button type="button" class="planet-tog" title="' + (on ? 'إخفاء' : 'إظهار') + '" onclick="falakSetPlanet(\'' + p.id + '\',' + (!on) + ')"><img src="astro/planets/' + (on ? 'toggle-on.png' : 'toggle-off.png') + '" alt=""></button>';
-        html += '<button type="button" class="planet-name"' + (up ? ' onclick="falakSelectPlanet(\'' + p.id + '\')"' : ' disabled') + '><img class="planet-ico' + (p.id === 'sat' ? ' sat' : '') + '" src="astro/planets/' + p.id + '.png" alt=""><span>' + name + '</span></button>';
+        html += '<button type="button" class="planet-name" onclick="falakSelectPlanet(\'' + p.id + '\')"><img class="planet-ico' + (p.id === 'sat' ? ' sat' : '') + '" src="astro/planets/' + p.id + '.png" alt=""><span>' + name + '</span></button>';
         html += '</div>';
     });
     html += '</div>';
@@ -418,14 +296,8 @@ function falakStarSearchInput(q) {
         return;
     }
     box.innerHTML = falakSearchHits.map(function (s, i) {
-        const sel = falakSelectedStar && falakSelectedStar[0] === s[0];
-        const sub = falakSub(s[1], s[2]);
-        const up = falakSkySelectable(sub.lat, sub.lon);
-        return '<button type="button" class="star-hit' + (sel ? ' sel' : '') + (up ? '' : ' sky-off') + '"' + (up ? ' onclick="falakFocusStar(falakSearchHits[' + i + '])"' : ' disabled') + '>' + falakStarLabel(s) + (s[5] ? ' · ' + s[5] : '') + ' · HIP ' + s[0] + '</button>';
+        return '<button type="button" onclick="falakFocusStar(falakSearchHits[' + i + '])">' + falakStarLabel(s) + (s[5] ? ' · ' + s[5] : '') + ' · HIP ' + s[0] + '</button>';
     }).join('');
-}
-function falakRenderSearchHits() {
-    falakStarSearchInput(document.getElementById('star-search-input') ? document.getElementById('star-search-input').value : '');
 }
 function falakFindStars(q) {
     const query = String(q || '').trim().toLowerCase();
@@ -458,73 +330,32 @@ function falakStarSearchGo() {
     }
     if (falakSearchHits.length) falakFocusStar(falakSearchHits[0]);
 }
-function falakFocusStar(s, fromScreen) {
+function falakFocusStar(s) {
     if (!s) return;
-    const inCam = falakInObserverCam();
-    if (inCam) {
-        const hit = falakCameraHitStar(s);
-        if (!hit || !falakSkySelectable(hit.lat, hit.lon)) return;
-        if (!fromScreen) {
-            falakMarkStar(s);
-            if (typeof obsZoomOverHalf === 'function' && obsZoomOverHalf() && typeof obsReturnThenZoom === 'function') obsReturnThenZoom(hit);
-            else if (typeof zoomObserverToBody === 'function') zoomObserverToBody(hit, 3000);
-            return;
-        }
-    }
-    if (!inCam && falakSelectedStar && falakSelectedStar[0] === s[0] && falakFocusKind === 'star') {
-        falakSelectedStar = null;
-        falakFocusKind = null;
-        falakCenterLock = false;
-    } else {
-        falakSelectedStar = s;
-        falakSelectedPlanet = null;
-        falakFocusKind = 'star';
-        falakCenterLock = !inCam;
-        if (!falakStars) falakStars = true;
-        falakLayersOn();
-        falakSyncTabs();
-        if (!inCam) falakHold2DCenter(true);
-    }
-    falakRenderSearchHits();
-    falakRenderPlanets();
+    falakSelectedStar = s;
+    if (!falakStars) falakStars = true;
+    falakLayersOn();
+    falakSyncTabs();
     falakRenderSide();
-    if (typeof drawAzimuthal === 'function') drawAzimuthal();
-    if (!inCam && typeof updateAzim3D === 'function') updateAzim3D();
-}
-function falakReleaseCenter() {
-    falakCenterLock = false;
-}
-function falakHold2DCenter(forceZoom) {
-    if (!falakCenterLock || !falakFocusKind) return;
-    if (typeof gleason3DMode !== 'undefined' && gleason3DMode) return;
-    if (typeof observer3DReadyCam !== 'undefined' && observer3DReadyCam && typeof observerDomeOn !== 'undefined' && observerDomeOn) return;
-    if (typeof azimCanvas === 'undefined' || !azimCanvas || typeof azimZoom === 'undefined') return;
-    if (!azimCanvas.width && typeof resizeAzimCanvas === 'function') resizeAzimCanvas();
-    const w = azimCanvas.width, h = azimCanvas.height;
-    if (!w || !h) return;
-    let lat = null, lon = null;
-    if (falakFocusKind === 'star' && falakSelectedStar) {
-        const sub = falakSub(falakSelectedStar[1], falakSelectedStar[2]);
-        lat = sub.lat; lon = sub.lon;
-    } else if (falakFocusKind === 'planet' && falakSelectedPlanet && typeof FALAK_PLANETS !== 'undefined' && typeof falakPlanetNow === 'function') {
-        const def = FALAK_PLANETS.filter(function (x) { return x.id === falakSelectedPlanet; })[0];
-        if (def) {
-            const now = falakPlanetNow(def);
-            lat = now.lat; lon = now.lon;
+    if (typeof gleason3DMode !== 'undefined' && gleason3DMode && typeof toggleGleason3D === 'function') toggleGleason3D();
+    const sub = falakSub(s[1], s[2]);
+    if (typeof azimCanvas !== 'undefined' && azimCanvas) {
+        if (!azimCanvas.width && typeof resizeAzimCanvas === 'function') resizeAzimCanvas();
+        const w = azimCanvas.width, h = azimCanvas.height;
+        if (w && h && typeof azimZoom !== 'undefined') {
+            azimZoom = 3;
+            azimOffsetX = 0;
+            azimOffsetY = 0;
+            const p = falakProject(sub.lat, sub.lon, w, h);
+            if (p && isFinite(p.x)) {
+                azimOffsetX = w / 2 - p.x;
+                azimOffsetY = h / 2 - p.y;
+            }
+            if (typeof azimNeedsFullRedraw !== 'undefined') azimNeedsFullRedraw = true;
         }
     }
-    if (!isFinite(lat) || !isFinite(lon)) return;
-    if (forceZoom) {
-        azimZoom = 3;
-        if (typeof azimNeedsFullRedraw !== 'undefined') azimNeedsFullRedraw = true;
-    }
-    azimOffsetX = 0;
-    azimOffsetY = 0;
-    const p = falakProject(lat, lon, w, h);
-    if (p && isFinite(p.x)) {
-        azimOffsetX = w / 2 - p.x;
-        azimOffsetY = h / 2 - p.y;
-    }
+    if (typeof drawAzimuthal === 'function') drawAzimuthal();
+    if (typeof updateAzim3D === 'function') updateAzim3D();
 }
 function falakRenderSide() {
     const box = document.getElementById('falak-side');
@@ -996,8 +827,9 @@ function falakDomeAt(lat, lon, lift) {
         nx: n.x, ny: n.y, nz: n.z, lat: lat, lon: lon
     };
 }
-function falakDomeFront() {
-    return true;
+function falakDomeFront(p) {
+    const cam = azim3dCamera.position;
+    return (cam.x - p.x) * p.nx + (cam.y - p.y) * p.ny + (cam.z - p.z) * p.nz > 0.02;
 }
 function falakObserverCam() {
     return !!(typeof observer3DReadyCam !== 'undefined' && observer3DReadyCam
@@ -1040,24 +872,6 @@ function falakMagLimit(fov) {
 function falakStarPixels(mag, fov) {
     const boost = Math.pow(78 / Math.max(0.8, fov || 78), 0.7);
     return Math.max(1.05, (7.2 - mag) * 0.55) * boost;
-}
-function falakObsDrawnPx(hit) {
-    const fov = (typeof observerFov === 'number') ? observerFov : 78;
-    const h = (typeof azimCanvas !== 'undefined' && azimCanvas && (azimCanvas.clientHeight || azimCanvas.height)) || 800;
-    const tanV = Math.tan((fov * Math.PI / 180) / 2);
-    if (!hit) return 8;
-    if (hit.kind === 's') return falakStarPixels(hit.s ? hit.s[3] : 1, fov);
-    if (hit.kind !== 'p' || typeof FALAK_PLANETS === 'undefined') return 8;
-    let marsRpx = 3.4;
-    const marsP = FALAK_PLANETS.filter(function (x) { return x.id === 'mar'; })[0];
-    if (marsP) {
-        const mn = falakPlanetNow(marsP);
-        marsRpx = Math.max((h / 2) * Math.tan(falakPlanetAngR('mar', mn.au)) / tanV, 3.4);
-    }
-    const def = FALAK_PLANETS.filter(function (x) { return x.id === hit.id; })[0];
-    const au = def ? falakPlanetNow(def).au : 1;
-    const trueR = (h / 2) * Math.tan(falakPlanetAngR(hit.id, au)) / tanV;
-    return hit.id === 'sat' ? Math.max(trueR * 2.25, 3.4) : marsRpx;
 }
 function drawFalakInObserver(ctx, project, w, h, fovDeg) {
     if (!falakOn || !ctx || !project || typeof observer3DPos === 'undefined' || !observer3DPos) return;
@@ -1217,7 +1031,7 @@ function falakMakeSprite(text, fill) {
     const tex = new THREE.CanvasTexture(c);
     tex.needsUpdate = true;
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: tex, transparent: true, depthWrite: false, depthTest: false
+        map: tex, transparent: true, depthWrite: false, depthTest: true
     }));
     sp.renderOrder = 14;
     sp.userData.tex = tex;
@@ -1241,7 +1055,7 @@ function falakDiskMaterial(tex) {
     return new THREE.ShaderMaterial({
         uniforms: { map: { value: tex }, uSel: { value: 0 } },
         transparent: true,
-        depthTest: false,
+        depthTest: true,
         depthWrite: false,
         vertexShader: [
             'varying vec3 vN;',
@@ -1359,7 +1173,7 @@ function falakEnsure3D() {
                 mesh = new THREE.Mesh(
                     new THREE.PlaneGeometry(1, 1),
                     new THREE.MeshBasicMaterial({
-                        map: tex, transparent: true, depthTest: false, depthWrite: false,
+                        map: tex, transparent: true, depthTest: true, depthWrite: false,
                         side: THREE.DoubleSide, alphaTest: 0.12
                     })
                 );
@@ -1450,9 +1264,8 @@ function syncFalak3D(domeOn) {
     if (typeof gleasonLatLonTo3D !== 'function' || typeof capShellY !== 'function' || typeof falakCapNormal !== 'function') return;
     falakEnsure3D();
     falak3dGroup.visible = true;
-    if (falak3dStars && falak3dStars.material) falak3dStars.material.depthTest = false;
-    if (falak3dCons && falak3dCons.material) falak3dCons.material.depthTest = false;
-    if (falak3dOrbits && falak3dOrbits.material) falak3dOrbits.material.depthTest = false;
+    if (falak3dStars && falak3dStars.material) falak3dStars.material.depthTest = !eye;
+    if (falak3dCons && falak3dCons.material) falak3dCons.material.depthTest = !eye;
     if (falak3dStars) falak3dStars.renderOrder = eye ? 12 : 9;
     if (falak3dCons) falak3dCons.renderOrder = eye ? 11 : 8;
     falak3dPick = [];
@@ -1714,7 +1527,7 @@ function syncFalak3D(domeOn) {
                 mesh = new THREE.Mesh(
                     new THREE.PlaneGeometry(1, 1),
                     new THREE.MeshBasicMaterial({
-                        map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+                        map: tex, transparent: true, depthWrite: false, side: THREE.FrontSide,
                         polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
                     })
                 );
@@ -1754,8 +1567,7 @@ function syncFalak3D(domeOn) {
             if (!mesh.visible) return;
             mesh.position.set(at.x, at.y, at.z);
             if (mesh.material) {
-                mesh.material.depthTest = false;
-                mesh.material.side = THREE.DoubleSide;
+                mesh.material.depthTest = !eye;
                 mesh.material.clippingPlanes = eye ? [falak3dGroup.userData.horizonClip] : null;
                 mesh.material.needsUpdate = true;
             }
