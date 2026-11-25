@@ -1,0 +1,103 @@
+/* تخطيط الجوال المشترك: Web الضيق وأندرويد و iOS يقرأون نفس الصفحة. */
+html.falak-phone,
+html.falak-phone body {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+html.falak-phone body {
+  display: block;
+  height: 100vh;
+  height: 100dvh;
+}
+
+html.falak-phone #globe-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-width: 0;
+}
+
+html.falak-phone #sidebar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  width: auto !important;
+  max-height: 74dvh;
+  z-index: 70;
+  transform: translateY(104%);
+  transition: transform 200ms ease;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
+
+html.falak-phone body.falak-drawer-open #sidebar {
+  transform: none;
+}
+
+html.falak-phone #view-toggle-bar {
+  overflow-x: auto;
+}
+
+#falak-drawer-btn,
+#falak-drawer-scrim,
+#falak-drawer-close {
+  display: none;
+}
+
+html.falak-phone #falak-drawer-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  z-index: 60;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  inset-inline-start: 12px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  border: 0;
+  background: #01e0fa;
+  color: #041820;
+  font-weight: 700;
+  font-family: Tajawal, sans-serif;
+  font-size: 0.95rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  border-radius: 999px;
+}
+
+html[data-falak-platform="android"].falak-phone #falak-drawer-btn {
+  border-radius: 12px;
+}
+
+html.falak-phone #falak-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  background: rgba(4, 8, 18, 0.55);
+}
+
+html.falak-phone body.falak-drawer-open #falak-drawer-scrim {
+  display: block;
+}
+
+html.falak-phone #falak-drawer-close {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+  min-height: 44px;
+  border: 1px solid #3a506b;
+  border-radius: 8px;
+  background: #1c2541;
+  color: #4cc9f0;
+  font-family: Tajawal, sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.falak-phone #sidebar {
+    transition: none;
+  }
+}
